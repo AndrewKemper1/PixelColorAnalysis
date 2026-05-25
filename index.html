@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PixelColorAnalysis</title>
+  <style>
+    body {
+      background: #1a1a2e;
+      color: white;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+
+    h1 {
+      color: #e94560;
+    }
+
+    canvas {
+      display: block;
+      max-width: 600px;
+      margin-top: 15px;
+      border: 2px solid #e94560;
+    }
+
+    table {
+      margin-top: 20px;
+      border-collapse: collapse;
+      width: 100%;
+      max-width: 700px;
+    }
+
+    th, td {
+      border: 1px solid #444;
+      padding: 8px 12px;
+      text-align: left;
+    }
+
+    th {
+      background: #16213e;
+    }
+
+    .swatch {
+      width: 30px;
+      height: 20px;
+      display: inline-block;
+      border: 1px solid #888;
+      vertical-align: middle;
+    }
+
+    #info {
+      margin-top: 10px;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>PixelColorAnalysis</h1>
+  <p>Upload an image to see its most common colors.</p>
+
+  <input type="file" id="fileInput" accept="image/*">
+
+  <canvas id="canvas"></canvas>
+
+  <div id="info"></div>
+
+  <table id="colorTable" style="display:none">
+    <thead>
+      <tr>
+        <th>Color</th>
+        <th>Hex</th>
+        <th>RGB</th>
+        <th>Pixels</th>
+        <th>%</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const info = document.getElementById('info');
+    const colorTable = document.getElementById('colorTable');
+    const tableBody = document.getElementById('tableBody');
+
+    fileInput.addEventListener('change', function() {
+      const file = this.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+          analyzeColors(img.width, img.height);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function analyzeColors(width, height) {
+      const pixels = ctx.getImageData(0, 0, width, height).data;
+      const colorMap = {};
+
+      for (let i = 0; i < pixels.length; i += 4) {
+        const r = pixels[i];
+        const g = pixels[i + 1];
+        const b = pixels[i + 2];
+        const key = r + ',' + g + ',' + b;
+        colorMap[key] = (colorMap[key] || 0) + 1;
+      }
+
+      const total = width * height;
+      const sorted = Object.entries(colorMap).sort((a, b) => b[1] - a[1]);
+
+      info.innerHTML = 'Total pixels: ' + total.toLocaleString() + ' &nbsp;|&nbsp; Unique colors: ' + sorted.length.toLocaleString();
+
+      tableBody.innerHTML = '';
+      sorted.slice(0, 20).forEach(function([key, count]) {
+        const [r, g, b] = key.split(',');
+        const hex = '#' + [r, g, b].map(function(v) {
+          return parseInt(v).toString(16).padStart(2, '0');
+        }).join('');
+        const pct = ((count / total) * 100).toFixed(2);
+
+        const row = document.createElement('tr');
+        row.innerHTML =
+          '<td><span class="swatch" style="background:' + hex + '"></span></td>' +
+          '<td>' + hex.toUpperCase() + '</td>' +
+          '<td>rgb(' + key + ')</td>' +
+          '<td>' + count.toLocaleString() + '</td>' +
+          '<td>' + pct + '%</td>';
+        tableBody.appendChild(row);
+      });
+
+      colorTable.style.display = 'table';
+    }
+  </script>
+
+</body>
+</html>
